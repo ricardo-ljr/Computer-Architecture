@@ -11,6 +11,10 @@ POP = 0b01000110
 CALL = 0b01010000
 RET = 0b00010001
 ADD = 0b10100000
+CMP = 0b10100111
+JEQ = 0b01010101
+JNE = 0b01010110
+JMP = 0b01010100
 
 
 class CPU:
@@ -34,9 +38,16 @@ class CPU:
         self.branchtable[CALL] = self.handle_call
         self.branchtable[RET] = self.handle_ret
         self.branchtable[ADD] = self.handle_add
+        self.branchtable[CMP] = self.handle_cmp
+        self.branchtable[JEQ] = self.handle_jeq
+        self.branchtable[JNE] = self.handle_jne
+        self.branchtable[JMP] = self.handle_jmp
 
         self.SP = 7
         self.reg[self.SP] = 0xF4  # 244
+
+        # Flag here
+        self.fl = 0b00000000
 
     def ram_read(self, address):
         # Memory_Address_Register = MAR
@@ -98,6 +109,20 @@ class CPU:
         # elif op == "SUB": etc
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            # Flags register
+            if self.reg[reg_a] < self.reg[reg_b]:
+                # 100
+                self.fl = 0b00000100
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                # 010
+                self.fl = 0b00000010
+            elif self.reg[reg_a] == self.reg[reg_b]:
+                # 001
+                self.fl = 0b00000001
+            else:
+                # 000
+                self.fl = 0b00000000
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -200,6 +225,30 @@ class CPU:
         self.alu("ADD", reg1, reg2)
 
         self.pc += 3
+
+#### Sprint Challenge ####
+
+    def handle_cmp(self):
+        reg1 = self.ram_read(self.pc + 1)
+        reg2 = self.ram_read(self.pc + 2)
+
+        self.alu("CMP", reg1, reg2)
+        self.pc += 3
+
+    def handle_jeq(self):
+        if self.fl == 0b00000001:
+            self.pc = self.reg[self.ram[self.pc + 1]]
+        else:
+            self.pc += 2
+
+    def handle_jmp(self):
+        self.pc = self.reg[self.ram[self.pc + 1]]
+
+    def handle_jne(self):
+        if self.fl != 0b00000001:
+            self.pc = self.reg[self.ram[self.pc + 1]]
+        else:
+            self.pc += 2
 
     def run(self):
         """Run the CPU."""
