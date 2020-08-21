@@ -15,6 +15,13 @@ CMP = 0b10100111
 JEQ = 0b01010101
 JNE = 0b01010110
 JMP = 0b01010100
+AND = 0b10101000
+NOT = 0b01101001
+OR = 0b10101010
+MOD = 0b10100100
+XOR = 0b10101011
+SHL = 0b10101100
+SHR = 0b10101101
 
 
 class CPU:
@@ -42,6 +49,12 @@ class CPU:
         self.branchtable[JEQ] = self.handle_jeq
         self.branchtable[JNE] = self.handle_jne
         self.branchtable[JMP] = self.handle_jmp
+        self.branchtable[AND] = self.handle_and
+        self.branchtable[NOT] = self.handle_not
+        self.branchtable[OR] = self.handle_or
+        self.branchtable[MOD] = self.handle_mod
+        # self.branchtable[SHL] = self.handle_shl
+        self.branchtable[XOR] = self.handle_xor
 
         self.SP = 7
         self.reg[self.SP] = 0xF4  # 244
@@ -123,6 +136,31 @@ class CPU:
             else:
                 # 000
                 self.fl = 0b00000000
+        elif op == "AND":
+            for i in range(len(self.reg[reg_a]) - 1):
+                self.reg[reg_a][i] = self.reg[reg_a][i] * self.reg[reg_b][i]
+        elif op == "NOT":
+            for each in self.reg[reg_a]:
+                if each == 0:
+                    each = 1
+                else:
+                    each = 0
+        elif op == "OR":
+            for i in range(len(self.reg[reg_a]) - 1):
+                if self.reg[reg_a][i] and self.reg[reg_b][i] == 0:
+                    self.reg[reg_a][i] = 0
+                else:
+                    self.reg[reg_a][i] = 1
+        elif op == "XOR":
+            for i in range(len(self.reg[reg_a]) - 1):
+                if self.reg[reg_a][i] == self.reg[reg_b][i]:
+                    self.reg[reg_a][i] = 0
+                else:
+                    self.reg[reg_a][i] = 1
+        elif op == "SHL":
+            self.reg[reg_a] << self.reg[reg_b]
+        elif op == "SHR":
+            self.reg[reg_a] >> self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -210,13 +248,16 @@ class CPU:
 
     def handle_ret(self):
 
-        index = self.ram_read(self.pc + 1)
+        # index = self.ram_read(self.pc + 1)
 
-        self.reg[index] = self.ram_read(self.reg[self.SP])
+        # self.reg[index] = self.ram_read(self.reg[self.SP])
 
+        # self.reg[self.SP] += 1
+
+        # self.pc = self.reg[index]
+
+        self.pc = self.ram[self.reg[self.SP]]
         self.reg[self.SP] += 1
-
-        self.pc = self.reg[index]
 
     def handle_add(self):
         reg1 = self.ram_read(self.pc + 1)
@@ -237,18 +278,59 @@ class CPU:
 
     def handle_jeq(self):
         if self.fl == 0b00000001:
-            self.pc = self.reg[self.ram[self.pc + 1]]
+            self.pc = self.reg[self.ram_read(self.pc + 1)]
         else:
             self.pc += 2
 
     def handle_jmp(self):
-        self.pc = self.reg[self.ram[self.pc + 1]]
+        self.pc = self.ram_read(self.pc + 1)
 
     def handle_jne(self):
         if self.fl != 0b00000001:
-            self.pc = self.reg[self.ram[self.pc + 1]]
+            self.pc = self.reg[self.ram_read(self.pc + 1)]
         else:
             self.pc += 2
+
+    def handle_mod(self):
+        reg1 = self.reg[self.ram_read(self.pc + 1)]
+        reg2 = self.reg[self.ram_read(self.pc + 2)]
+
+        try:
+            self.reg[self.ram_read(self.pc + 1)] = (reg1 % reg2)
+
+        except ZeroDivisionError:
+
+            sys.exit()
+
+#### Stretch Sprint Challenge ####
+
+    def handle_and(self):
+        reg_1 = self.ram_read(self.pc + 1)
+        reg_2 = self.ram_read(self.pc + 2)
+
+        self.alu("AND", reg_1, reg_2)
+        self.pc += 3
+
+    def handle_not(self):
+        reg_1 = self.ram_read(self.pc + 1)
+        reg_2 = self.ram_read(self.pc + 2)
+
+        self.alu("NOT", reg_1, reg_2)
+        self.pc += 2
+
+    def handle_or(self):
+        reg_1 = self.ram_read(self.pc + 1)
+        reg_2 = self.ram_read(self.pc + 2)
+
+        self.alu("OR", reg_1, reg_2)
+        self.pc += 3
+
+    def handle_xor(self):
+        reg_1 = self.ram_read(self.pc + 1)
+        reg_2 = self.ram_read(self.pc + 2)
+
+        self.alu("XOR", reg_1, reg_2)
+        self.pc += 3
 
     def run(self):
         """Run the CPU."""
